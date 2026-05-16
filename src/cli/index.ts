@@ -12,8 +12,27 @@ const command = args[0];
 
 if (command === "init") {
     runInit();
+} else if (command === "serve") {
+    runMultiServer();
 } else {
     runServer();
+}
+
+function runMultiServer() {
+    const experimentsDir = args[1] ? path.resolve(args[1]) : process.cwd();
+    const port = args.find(a => a.startsWith("--port="))?.split("=")[1] ?? "3000";
+    const serverEntry = path.join(__dirname, "../server/index.js");
+
+    console.log("Mode: multi-serve");
+    spawnSync("node", [serverEntry], {
+        stdio: "inherit",
+        env: {
+            ...process.env,
+            SERVE_MODE: "multi",
+            EXPERIMENTS_DIR: experimentsDir,
+            PORT: port,
+        },
+    });
 }
 
 function runServer() {
@@ -264,26 +283,37 @@ const CONF_DEFAULTS: Array<{ name: string; code: string }> = [
     { name: "counterbalance",  code: "const counterbalance = false;" },
     { name: "urlConfig",       code: 'const urlConfig = { [version]: "", default: "" };' },
     { name: "adminEmail",      code: "const adminEmail = undefined;" },
+    { name: "feedbackLink",    code: 'const feedbackLink = "";' },
     { name: "intake",          code: "const intake = { subject: {}, sites: {}, phenotypes: [] };" },
 ];
 
 function patchConfJs(experimentDir: string): string[] {
     const confPath = path.join(experimentDir, "exp", "conf.js");
     if (!fs.existsSync(confPath)) return [];
-    const src = fs.readFileSync(confPath, "utf8");
+    let src = fs.readFileSync(confPath, "utf8");
     const additions: string[] = [];
     const patched: string[] = [];
     for (const { name, code } of CONF_DEFAULTS) {
-        if (!new RegExp(`\\b${name}\\b`).test(src)) {
-            additions.push(code);
+        const declared = new RegExp(`\\b${name}\\b`).test(src);
+        // Also patch if declared but uninitialized: `let version;` or `var version;`
+        const uninitialized = new RegExp(`\\b(?:let|var)\\s+${name}\\s*;`).test(src);
+        if (!declared || uninitialized) {
+            if (uninitialized) {
+                // Replace the bare declaration in-place so the variable isn't declared twice
+                src = src.replace(
+                    new RegExp(`\\b(?:let|var)\\s+${name}\\s*;`),
+                    code
+                );
+            } else {
+                additions.push(code);
+            }
             patched.push(name);
         }
     }
-    if (additions.length) {
-        fs.writeFileSync(confPath,
-            src.trimEnd() + "\n\n// Added by jspsych-wrap import\n" + additions.join("\n") + "\n"
-        );
-    }
+    const trailer = additions.length
+        ? "\n\n// Added by jspsych-wrap import\n" + additions.join("\n") + "\n"
+        : "";
+    fs.writeFileSync(confPath, src.trimEnd() + trailer);
     return patched;
 }
 

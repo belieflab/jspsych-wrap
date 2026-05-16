@@ -341,19 +341,45 @@ function injectVarJsSetupCalls(dir: string, setupCallsInjected: string[], manual
     }
 
     const injected: string[] = [];
+    const preexisting: string[] = [];
     for (const [fnName, globals] of globalSetters) {
         // Check if var.js uses any of these globals at top level (not inside a function)
         const usedInVar = globals.some(g => new RegExp(`\\b${g}\\b`).test(varSrc));
         const alreadyCalled = new RegExp(`\\b${fnName}\\s*\\(`).test(varSrc);
         if (usedInVar && !alreadyCalled) {
             injected.push(fnName);
+        } else if (usedInVar && alreadyCalled) {
+            // Call already present but let→var conversion may still be needed
+            preexisting.push(fnName);
         }
     }
 
-    if (injected.length) {
+    if (injected.length || preexisting.length) {
         const calls = injected.map(fn => `${fn}();`).join("\n");
-        fs.writeFileSync(varPath, `${calls}\n\n${varSrc}`);
-        setupCallsInjected.push(...injected);
-        manualFlags.push(`var.js: verify setup calls run correctly: ${injected.join(", ")}`);
+
+        // The setup functions set globals via bare assignment (e.g. practiceHardRewardValue = [...]).
+        // If var.js redeclares those same names with `let`, the let binding shadows the global.
+        // Convert `let X;` / `let X = []` / `let X = value` to `var` for all globals those
+        // functions set — including pre-existing calls that the migration tool didn't inject.
+        const globalsToVar = new Set<string>();
+        for (const fnName of [...injected, ...preexisting]) {
+            const globals = globalSetters.get(fnName);
+            if (globals) globals.forEach(g => globalsToVar.add(g));
+        }
+        let patchedVarSrc = varSrc;
+        for (const g of globalsToVar) {
+            patchedVarSrc = patchedVarSrc.replace(
+                new RegExp(`\\blet\\s+(${g})\\b`, "g"),
+                "var $1"
+            );
+        }
+
+        const newSrc = injected.length ? `${calls}\n\n${patchedVarSrc}` : patchedVarSrc;
+        if (newSrc !== varSrc) {
+            fs.writeFileSync(varPath, newSrc);
+            setupCallsInjected.push(...injected);
+            if (injected.length) manualFlags.push(`var.js: verify setup calls run correctly: ${injected.join(", ")}`);
+            if (preexisting.length) manualFlags.push(`var.js: converted let→var for pre-existing setup globals: ${preexisting.join(", ")}`);
+        }
     }
 }

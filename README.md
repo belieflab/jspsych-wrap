@@ -117,12 +117,45 @@ const intake = {
 };
 ```
 
+## Production / multi-experiment server
+
+`jspsych-wrap serve` runs a single Express process that serves all experiments in a directory, with path-based routing (`/exp23/`, `/exp17/`, etc.). Adding an experiment is just `git clone` — no restart, no proxy config, no port assignment.
+
+**Server setup (once, admin only):**
+
+```bash
+npm install -g jspsych-wrap
+pm2 start jspsych-wrap --name lab-server -- serve /srv/experiments
+pm2 startup && pm2 save
+```
+
+nginx (written once, never touched again):
+
+```nginx
+server {
+    server_name lab.yourdomain.com;
+    location / { proxy_pass http://127.0.0.1:3000; }
+}
+```
+
+**Experimenter workflow (per experiment):**
+
+```bash
+cd /srv/experiments
+git clone git@github.com:lab/exp23.git
+# live immediately at https://lab.yourdomain.com/exp23/
+```
+
+The experiments directory is a plain folder — no `package.json`, no Node.js knowledge required from experimenters. Each experiment subdirectory is an ordinary git clone with a `wrap/` submodule. The server detects new directories automatically (no restart needed).
+
 ## CLI options
 
 ```bash
 jspsych-wrap              # start server (default port 3000)
 jspsych-wrap --port=8080  # custom port
 jspsych-wrap init         # interactive setup wizard
+jspsych-wrap serve [dir]  # multi-experiment server (default: cwd)
+jspsych-wrap serve /srv/experiments --port=3000
 ```
 
 ## Development

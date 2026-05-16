@@ -56,7 +56,7 @@ function saveData(name, data = jsPsych.data.get().csv(), callback = () => {}) {
     // DO NOT MODIFY THE FILENAME HERE - Use exactly what was passed
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/data");
+    xhr.open("POST", (window.__WRAP_BASE__ || "") + "/data");
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
