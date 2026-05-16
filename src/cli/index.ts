@@ -205,10 +205,14 @@ async function runInit() {
             initialValue: true,
         });
         if (!p.isCancel(upgrade) && upgrade) {
-            const { typesMigrated, keycodesFixed, initTransformed, manualFlags } = migrateV6ToV7(experimentDir);
-            if (typesMigrated.length)   p.log.success(`Plugin types upgraded: ${typesMigrated.join(", ")}`);
-            if (keycodesFixed.length)   p.log.success(`Keycode choices updated: ${keycodesFixed.join(", ")}`);
-            if (initTransformed.length) p.log.success(`jsPsych.init() migrated: ${initTransformed.join(", ")}`);
+            const { typesMigrated, keycodesFixed, noKeysMigrated, initTransformed, initLifted, setupCallsInjected, timelineVarFiles, manualFlags } = migrateV6ToV7(experimentDir);
+            if (typesMigrated.length)      p.log.success(`Plugin types upgraded: ${typesMigrated.join(", ")}`);
+            if (keycodesFixed.length)      p.log.success(`Keycode choices updated: ${keycodesFixed.join(", ")}`);
+            if (noKeysMigrated.length)     p.log.success(`NO_KEYS/ALL_KEYS migrated: ${noKeysMigrated.join(", ")}`);
+            if (initTransformed.length)    p.log.success(`jsPsych.init() migrated: ${initTransformed.join(", ")}`);
+            if (initLifted.length)         p.log.success(`initJsPsych() lifted to timeline.js: ${initLifted.join(", ")}`);
+            if (setupCallsInjected.length) p.log.success(`var.js setup calls injected: ${setupCallsInjected.join(", ")}`);
+            if (timelineVarFiles.length)   p.log.success(`jsPsych.timelineVariable() found: ${timelineVarFiles.join(", ")}`);
             for (const flag of manualFlags) p.log.warn(flag);
         }
     }

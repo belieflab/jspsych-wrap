@@ -112,19 +112,27 @@ function transformInit(src: string): { src: string; timelineVar: string | null }
 export interface MigrationResult {
     typesMigrated: string[];
     keycodesFixed: string[];
+    noKeysMigrated: string[];
     initTransformed: string[];
+    initLifted: string[];       // initJsPsych() moved from fn.js wrapper → top of timeline.js
+    setupCallsInjected: string[]; // functions prepended to var.js
+    timelineVarFiles: string[];
     manualFlags: string[];
 }
 
 export function migrateV6ToV7(expDir: string): MigrationResult {
     const typesMigrated = new Set<string>();
     const keycodesFixed = new Set<string>();
+    const noKeysMigrated = new Set<string>();
     const initTransformed: string[] = [];
+    const initLifted: string[] = [];
+    const setupCallsInjected: string[] = [];
+    const timelineVarFiles: string[] = [];
     const manualFlags: string[] = [];
 
     const dir = path.join(expDir, "exp");
     if (!fs.existsSync(dir)) {
-        return { typesMigrated: [], keycodesFixed: [], initTransformed, manualFlags };
+        return { typesMigrated: [], keycodesFixed: [], noKeysMigrated: [], initTransformed, initLifted, setupCallsInjected, timelineVarFiles, manualFlags };
     }
 
     for (const file of fs.readdirSync(dir)) {
@@ -177,11 +185,11 @@ export function migrateV6ToV7(expDir: string): MigrationResult {
         // 4. jsPsych.NO_KEYS / jsPsych.ALL_KEYS → string literals
         if (/jsPsych\.NO_KEYS\b/.test(src)) {
             src = src.replace(/\bjsPsych\.NO_KEYS\b/g, '"NO_KEYS"');
-            keycodesFixed.add(file);
+            noKeysMigrated.add(file);
         }
         if (/jsPsych\.ALL_KEYS\b/.test(src)) {
             src = src.replace(/\bjsPsych\.ALL_KEYS\b/g, '"ALL_KEYS"');
-            keycodesFixed.add(file);
+            noKeysMigrated.add(file);
         }
 
         // 5. Flag button_html — removed in v7
@@ -194,25 +202,107 @@ export function migrateV6ToV7(expDir: string): MigrationResult {
             manualFlags.push(`${file}: .keyCode/.which → update to KeyboardEvent.key string comparisons`);
         }
 
+        // 7. Detect jsPsych.timelineVariable() usage — in v7 this is an instance method
+        if (/\bjsPsych\.timelineVariable\s*\(/.test(src)) {
+            timelineVarFiles.push(file);
+        }
+
         if (src !== original) fs.writeFileSync(filePath, src);
     }
 
     // Detect setup functions in fn.js that must run before var.js
-    // Pattern: fn.js defines a function that sets globals used at the top level of var.js
-    injectVarJsSetupCalls(dir, manualFlags);
+    injectVarJsSetupCalls(dir, setupCallsInjected, manualFlags);
+
+    // If timelineVariable is used AND initJsPsych ended up inside a wrapper function,
+    // auto-fix: extract initJsPsych({...}) config and inject it at the top of timeline.js.
+    if (timelineVarFiles.length) {
+        const fnPath       = path.join(dir, "fn.js");
+        const timelinePath = path.join(dir, "timeline.js");
+        if (fs.existsSync(fnPath) && fs.existsSync(timelinePath)) {
+            const fnSrc = fs.readFileSync(fnPath, "utf8");
+            if (isInitInsideFunction(fnSrc)) {
+                const fixed = liftInitJsPsychToTimeline(fnSrc, timelinePath, initLifted, manualFlags);
+                if (fixed) fs.writeFileSync(fnPath, fixed);
+            }
+        }
+    }
 
     return {
         typesMigrated: [...typesMigrated],
         keycodesFixed: [...keycodesFixed],
+        noKeysMigrated: [...noKeysMigrated],
         initTransformed,
+        initLifted,
+        setupCallsInjected,
+        timelineVarFiles,
         manualFlags,
     };
+}
+
+// Returns true if the file's initJsPsych() call is inside a function body (not top-level).
+function isInitInsideFunction(src: string): boolean {
+    const idx = src.indexOf("initJsPsych(");
+    if (idx === -1) return false;
+    // Count unmatched { before this position — if > 0, we're inside a function body
+    let depth = 0;
+    for (let i = 0; i < idx; i++) {
+        if (src[i] === "{") depth++;
+        else if (src[i] === "}") depth--;
+    }
+    return depth > 0;
+}
+
+// Extracts initJsPsych({...}) config from inside a wrapper function in fn.js,
+// injects "const jsPsych = initJsPsych({...config...});" at the top of timeline.js,
+// and replaces the initJsPsych call in fn.js with just jsPsych.run() (leaving run in place).
+// Returns the modified fn.js source, or null if extraction failed.
+function liftInitJsPsychToTimeline(
+    fnSrc: string,
+    timelinePath: string,
+    initLifted: string[],
+    manualFlags: string[]
+): string | null {
+    const initIdx = fnSrc.indexOf("initJsPsych(");
+    if (initIdx === -1) return null;
+
+    // Extract the full initJsPsych({...}) call by brace-depth counting
+    let i = initIdx + "initJsPsych(".length - 1; // points to '('
+    let depth = 0, started = false;
+    const callStart = initIdx;
+    let callEnd = -1;
+    while (i < fnSrc.length) {
+        if (fnSrc[i] === "(") { depth++; started = true; }
+        else if (fnSrc[i] === ")") {
+            depth--;
+            if (started && depth === 0) { callEnd = i; break; }
+        }
+        i++;
+    }
+    if (callEnd === -1) return null;
+
+    const initCall = fnSrc.slice(callStart, callEnd + 1); // e.g. initJsPsych({ show_progress_bar: true })
+
+    // Inject at the top of timeline.js
+    const timelineSrc = fs.readFileSync(timelinePath, "utf8");
+    if (!/\binitJsPsych\s*\(/.test(timelineSrc)) {
+        const injected = `const jsPsych = ${initCall};\n\n${timelineSrc}`;
+        fs.writeFileSync(timelinePath, injected);
+        initLifted.push("fn.js → timeline.js");
+    }
+
+    // Strip the window.jsPsych = initJsPsych({...}); line from fn.js
+    // Find the line containing the initJsPsych call and remove it
+    const lineStart = fnSrc.lastIndexOf("\n", callStart) + 1;
+    const lineEnd   = fnSrc.indexOf("\n", callEnd);
+    const newFnSrc  = fnSrc.slice(0, lineStart) + fnSrc.slice(lineEnd === -1 ? fnSrc.length : lineEnd + 1);
+
+    return newFnSrc;
 }
 
 // Scan fn.js for functions that set globals (via assignment at top scope),
 // then check if var.js uses those globals without first calling the function.
 // If so, prepend the call to var.js.
-function injectVarJsSetupCalls(dir: string, manualFlags: string[]): void {
+function injectVarJsSetupCalls(dir: string, setupCallsInjected: string[], manualFlags: string[]): void {
     const fnPath  = path.join(dir, "fn.js");
     const varPath = path.join(dir, "var.js");
     if (!fs.existsSync(fnPath) || !fs.existsSync(varPath)) return;
@@ -235,6 +325,9 @@ function injectVarJsSetupCalls(dir: string, manualFlags: string[]): void {
             else if (fnSrc[i] === "}") { depth--; if (started && depth === 0) { body = fnSrc.slice(fnMatch.index, i + 1); break; } }
             i++;
         }
+        // Skip DOM-manipulating functions — they're trial-time handlers, not setup functions
+        if (/document\.\w+\s*\(|getElementById|querySelector|\.style\b|\.innerHTML\b/.test(body)) continue;
+
         // Collect bare assignments (not object keys, not var/let/const declarations)
         // Match any identifier (upper or lower case) immediately followed by =,
         // excluding keyword-led lines (let/const/var/if/for/return)
@@ -259,7 +352,8 @@ function injectVarJsSetupCalls(dir: string, manualFlags: string[]): void {
 
     if (injected.length) {
         const calls = injected.map(fn => `${fn}();`).join("\n");
-        fs.writeFileSync(varPath, `// Setup calls injected by jspsych-wrap migration\n${calls}\n\n${varSrc}`);
-        manualFlags.push(`var.js: prepended setup calls — verify these run correctly: ${injected.join(", ")}`);
+        fs.writeFileSync(varPath, `${calls}\n\n${varSrc}`);
+        setupCallsInjected.push(...injected);
+        manualFlags.push(`var.js: verify setup calls run correctly: ${injected.join(", ")}`);
     }
 }
