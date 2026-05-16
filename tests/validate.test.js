@@ -43,33 +43,26 @@ function validateField(fieldId, errorMessage) {
             typeof intake !== "undefined" &&
             intake.subject &&
             intake.subject.prefix &&
-            intake.subject.minLength &&
-            intake.subject.maxLength
+            intake.subject.length &&
+            intake.subject.length
         ) {
             if (!element.value.startsWith(intake.subject.prefix)) {
                 addValidationAlert(`Subject ID must begin with ${intake.subject.prefix}.`);
                 return null;
             }
-            if (element.value.length !== intake.subject.minLength) {
-                addValidationAlert(`Subject ID must be exactly ${intake.subject.minLength} characters long.`);
+            if (element.value.length !== intake.subject.length) {
+                addValidationAlert(`Subject ID must be exactly ${intake.subject.length} characters long.`);
                 return null;
             }
             const digitPart = element.value.substring(intake.subject.prefix.length);
-            const expectedDigitCount = intake.subject.minLength - intake.subject.prefix.length;
+            const expectedDigitCount = intake.subject.length - intake.subject.prefix.length;
             if (digitPart.length !== expectedDigitCount || !/^\d+$/.test(digitPart)) {
                 addValidationAlert(`Subject ID must have ${expectedDigitCount} digits after ${intake.subject.prefix}.`);
                 return null;
             }
         }
 
-        const siteSubjectRules = {
-            UCD:      { prefix: "C10D", length: 8 },
-            UMN:      { prefix: "C10M", length: 8 },
-            Maryland: { prefix: "C10B", length: 8 },
-            UChicago: { prefix: "C10C", length: 8 },
-            WashU:    { prefix: "C10W", length: 8 },
-        };
-        const siteRule = siteSubjectRules[site];
+        const siteRule = (typeof intake !== "undefined" && intake.sites) ? intake.sites[site] : undefined;
         if (siteRule) {
             const suffixLength = siteRule.length - siteRule.prefix.length;
             const pattern = new RegExp(`^${siteRule.prefix}.{${suffixLength}}$`);
@@ -304,6 +297,18 @@ describe("validateField — subject ID (no site rule, no intake config)", () => 
 // ---------------------------------------------------------------------------
 
 describe("validateField — subject ID site-specific rules", () => {
+    beforeEach(() => {
+        global.intake = {
+            sites: {
+                UCD:      { prefix: "C10D", length: 8 },
+                UMN:      { prefix: "C10M", length: 8 },
+                Maryland: { prefix: "C10B", length: 8 },
+                UChicago: { prefix: "C10C", length: 8 },
+                WashU:    { prefix: "C10W", length: 8 },
+            },
+        };
+    });
+
     function addSubject(value) {
         const el = document.createElement("input");
         el.id = "subject";
@@ -312,24 +317,23 @@ describe("validateField — subject ID site-specific rules", () => {
     }
 
     test.each([
-        ["UCD",      "C10D", "C10DABCD", true],
-        ["UMN",      "C10M", "C10MABCD", true],
-        ["Maryland", "C10B", "C10BABCD", true],
-        ["UChicago", "C10C", "C10CABCD", true],
-        ["WashU",    "C10W", "C10WABCD", true],
+        ["UCD",      "C10D", "C10DABCD"],
+        ["UMN",      "C10M", "C10MABCD"],
+        ["Maryland", "C10B", "C10BABCD"],
+        ["UChicago", "C10C", "C10CABCD"],
+        ["WashU",    "C10W", "C10WABCD"],
     ])("%s: accepts valid subject ID %s", (siteName, _prefix, id) => {
         global.site = siteName;
         addSubject(id);
-        const result = validateField("subject", "Enter subject.");
-        expect(result).not.toBeNull();
+        expect(validateField("subject", "Enter subject.")).not.toBeNull();
         expect(window.validateAlerts).toHaveLength(0);
     });
 
     test.each([
-        ["UCD",      "C10D", "BADPREFIX"],
-        ["UMN",      "C10M", "C10M123"],   // too short (7 chars)
-        ["Maryland", "C10B", "C10BABCDE"], // too long (9 chars)
-    ])("%s: rejects invalid subject ID '%s'", (siteName, _prefix, id) => {
+        ["UCD",      "BADPREFIX"],
+        ["UMN",      "C10M123"],   // too short (7 chars)
+        ["Maryland", "C10BABCDE"], // too long (9 chars)
+    ])("%s: rejects invalid subject ID '%s'", (siteName, id) => {
         global.site = siteName;
         addSubject(id);
         expect(validateField("subject", "Enter subject.")).toBeNull();
@@ -356,7 +360,7 @@ describe("validateField — subject ID intake config", () => {
     beforeEach(() => {
         global.site = "UNKNOWN_SITE"; // skip site rule
         global.intake = {
-            subject: { prefix: "VIP", minLength: 6, maxLength: 6 },
+            subject: { prefix: "VIP", length: 6 },
         };
     });
 

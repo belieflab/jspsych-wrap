@@ -51,8 +51,8 @@ function validateField(fieldId, errorMessage) {
             typeof intake !== "undefined" &&
             intake.subject &&
             intake.subject.prefix &&
-            intake.subject.minLength &&
-            intake.subject.maxLength
+            intake.subject.length &&
+            intake.subject.length
         ) {
             // Check if the value starts with the prefix
             if (!element.value.startsWith(intake.subject.prefix)) {
@@ -63,9 +63,9 @@ function validateField(fieldId, errorMessage) {
             }
 
             // Check total length
-            if (element.value.length !== intake.subject.minLength) {
+            if (element.value.length !== intake.subject.length) {
                 addValidationAlert(
-                    `Subject ID must be exactly ${intake.subject.minLength} characters long.`
+                    `Subject ID must be exactly ${intake.subject.length} characters long.`
                 );
                 return null;
             }
@@ -75,7 +75,7 @@ function validateField(fieldId, errorMessage) {
                 intake.subject.prefix.length
             );
             const expectedDigitCount =
-                intake.subject.minLength - intake.subject.prefix.length;
+                intake.subject.length - intake.subject.prefix.length;
 
             if (
                 digitPart.length !== expectedDigitCount ||
@@ -88,15 +88,8 @@ function validateField(fieldId, errorMessage) {
             }
         }
 
-        // Site-specific validation
-        const siteSubjectRules = {
-            UCD:      { prefix: "C10D", length: 8 },
-            UMN:      { prefix: "C10M", length: 8 },
-            Maryland: { prefix: "C10B", length: 8 },
-            UChicago: { prefix: "C10C", length: 8 },
-            WashU:    { prefix: "C10W", length: 8 },
-        };
-        const siteRule = siteSubjectRules[site];
+        // Site-specific validation — rules defined in exp/conf.js intake.sites
+        const siteRule = (typeof intake !== "undefined" && intake.sites) ? intake.sites[site] : undefined;
         if (siteRule) {
             const suffixLength = siteRule.length - siteRule.prefix.length;
             const pattern = new RegExp(`^${siteRule.prefix}.{${suffixLength}}$`);

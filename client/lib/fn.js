@@ -985,7 +985,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
         const siteSelectElement = document.getElementById("site");
         if (siteSelectElement && intake.sites) {
             console.log("FORM SETUP: Populating site select element");
-            populateAndAutofillSelect(siteSelectElement, intake.sites);
+            populateAndAutofillSelect(siteSelectElement, Object.keys(intake.sites));
         }
 
         // Populate phenotype select if it exists

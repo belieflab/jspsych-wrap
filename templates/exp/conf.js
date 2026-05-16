@@ -21,7 +21,10 @@ const urlConfig = { default: "" };
 const adminEmail = undefined;
 
 const intake = {
-    subject: { minLength: 5, maxLength: 5 },
-    sites: [],
+    subject: { length: 5 },
+    sites: {
+        // SiteName: {}                          — no validation
+        // SiteName: { prefix: "XXXX", length: 8 } — prefix + length validation
+    },
     phenotypes: ["hc"],
 };
