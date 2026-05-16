@@ -236,7 +236,9 @@ function injectVarJsSetupCalls(dir: string, manualFlags: string[]): void {
             i++;
         }
         // Collect bare assignments (not object keys, not var/let/const declarations)
-        const assignRe = /^[ \t]*([A-Z][a-zA-Z_]+)\s*=/mg;
+        // Match any identifier (upper or lower case) immediately followed by =,
+        // excluding keyword-led lines (let/const/var/if/for/return)
+        const assignRe = /^[ \t]*(?!(?:let|const|var|if|for|while|return|function|\/\/)\s)([a-zA-Z_][a-zA-Z_0-9]+)\s*=/mg;
         const globals: string[] = [];
         let aMatch: RegExpExecArray | null;
         while ((aMatch = assignRe.exec(body)) !== null) {
