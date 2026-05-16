@@ -35,6 +35,8 @@ function runInit() {
     const expDir = path.join(experimentDir, "exp");
     const dataDir = path.join(experimentDir, "data");
     const templatesDir = path.join(__dirname, "../../templates/exp");
+    const cssDir = path.join(experimentDir, "css");
+    const cssTemplatesDir = path.join(__dirname, "../../templates/css");
 
     if (fs.existsSync(pkgPath)) {
         console.error("package.json already exists. Run 'npm run dev' to start the server.");
@@ -68,6 +70,16 @@ function runInit() {
         console.log(`Created exp/ with ${templateFiles.join(", ")}`);
     } else {
         console.log("exp/ already exists — skipping scaffold");
+    }
+
+    // Create css/
+    if (!fs.existsSync(cssDir)) {
+        fs.mkdirSync(cssDir);
+        const cssFiles = fs.readdirSync(cssTemplatesDir);
+        for (const file of cssFiles) {
+            fs.copyFileSync(path.join(cssTemplatesDir, file), path.join(cssDir, file));
+        }
+        console.log("Created css/");
     }
 
     // Create data/
