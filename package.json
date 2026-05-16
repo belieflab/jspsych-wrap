@@ -4,13 +4,17 @@
   "description": "Express server and client utilities for jsPsych experiments — npm replacement for the PHP/submodule wrapper",
   "private": true,
   "main": "./dist/server/index.js",
+  "bin": {
+    "jspsych-wrap": "./dist/cli/index.js"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "start": "node dist/server/index.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "portfinder": "^1.0.38"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
