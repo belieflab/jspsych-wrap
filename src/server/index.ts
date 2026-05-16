@@ -19,6 +19,14 @@ app.get("/api/version", (_req, res) => {
     res.json({ version: version || null });
 });
 
+// Browser error forwarding — logs client-side errors to the terminal
+app.post("/api/log", (req, res) => {
+    const { level = "error", message, source, line } = req.body ?? {};
+    const location = [source, line].filter(Boolean).join(":");
+    console.error(`[browser] ${level}: ${message}${location ? ` (${location})` : ""}`);
+    res.json({ ok: true });
+});
+
 // Participant routing (replaces link/redirect.php)
 app.use(redirectRouter(EXPERIMENT_DIR));
 

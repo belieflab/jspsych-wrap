@@ -37,6 +37,8 @@ function runInit() {
     const templatesDir = path.join(__dirname, "../../templates/exp");
     const cssDir = path.join(experimentDir, "css");
     const cssTemplatesDir = path.join(__dirname, "../../templates/css");
+    const templateIndex = path.join(__dirname, "../../templates/index.html");
+    const experimentIndex = path.join(experimentDir, "index.html");
 
     if (fs.existsSync(pkgPath)) {
         console.error("package.json already exists. Run 'npm run dev' to start the server.");
@@ -80,6 +82,12 @@ function runInit() {
             fs.copyFileSync(path.join(cssTemplatesDir, file), path.join(cssDir, file));
         }
         console.log("Created css/");
+    }
+
+    // Copy index.html
+    if (!fs.existsSync(experimentIndex)) {
+        fs.copyFileSync(templateIndex, experimentIndex);
+        console.log("Created index.html");
     }
 
     // Create data/

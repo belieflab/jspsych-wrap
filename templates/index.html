@@ -3,6 +3,15 @@
 
 <head>
   <script>
+    window.addEventListener("error", (e) => {
+      fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: "error", message: e.message, source: e.filename, line: e.lineno }),
+      }).catch(() => {});
+    });
+  </script>
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
       // experimentAlias is declared in exp/conf.js (loaded in <footer>)
       if (typeof experimentAlias !== "undefined") {
