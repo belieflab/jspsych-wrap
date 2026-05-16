@@ -61,7 +61,7 @@ async function runInit() {
     if (importExisting) {
         const input = await p.text({
             message: "Path to existing experiment:",
-            placeholder: "../my-old-experiment",
+            placeholder: "/Applications/MAMP/htdocs/myExperiment",
             validate(value) {
                 const resolved = path.resolve(experimentDir, value);
                 if (!fs.existsSync(resolved)) return `Directory not found: ${resolved}`;
@@ -126,6 +126,33 @@ async function runInit() {
             fs.writeFileSync(path.join(dir.dest, ".gitkeep"), "");
             p.log.success(`Created ${dir.name}`);
         }
+    }
+
+    // jQuery remediation — rewrite $.getScript calls to loadScript
+    if (importExisting) {
+        const expDir = path.join(experimentDir, "exp");
+        const remediatedFiles: string[] = [];
+        const manualFiles: string[] = [];
+
+        for (const file of fs.readdirSync(expDir)) {
+            if (!file.endsWith(".js")) continue;
+            const filePath = path.join(expDir, file);
+            const original = fs.readFileSync(filePath, "utf8");
+
+            // Simple: $.getScript("path") or $.getScript('path')
+            let updated = original.replace(/\$\.getScript\((['"][^'"]+['"])\)/g, "loadScript($1)");
+
+            // Chained: $.getScript("path").done(...).fail(...) — flag for manual review
+            if (/\$\.getScript\(/.test(updated)) {
+                manualFiles.push(file);
+            } else if (updated !== original) {
+                fs.writeFileSync(filePath, updated);
+                remediatedFiles.push(file);
+            }
+        }
+
+        if (remediatedFiles.length) p.log.success(`jQuery remediated: ${remediatedFiles.join(", ")}`);
+        if (manualFiles.length)     p.log.warn(`Manual jQuery removal needed (chained calls): ${manualFiles.join(", ")}`);
     }
 
     // Install dependencies

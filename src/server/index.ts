@@ -39,8 +39,8 @@ app.use(dataRouter(DATA_DIR));
 // Serve wrap client assets — dist/client/ sits one level above dist/server/
 app.use("/wrap", express.static(path.join(__dirname, "../client")));
 
-// Serve experiment static files (index.html, exp/, css/, etc.)
-app.use(express.static(EXPERIMENT_DIR));
+// Serve experiment static files — index:false so index.html always goes through injectedHtml
+app.use(express.static(EXPERIMENT_DIR, { index: false }));
 
 // Scan exp/ for jsPsych* plugin references and inject missing CDN tags into HTML.
 const TEMPLATE_INDEX = path.join(__dirname, "../templates/index.html");
@@ -50,7 +50,7 @@ const indexPath = fs.existsSync(path.join(EXPERIMENT_DIR, "index.html"))
 const rawHtml = fs.readFileSync(indexPath, "utf8");
 const neededPlugins = scanPlugins(EXPERIMENT_DIR);
 const localPlugins  = scanLocalPlugins(EXPERIMENT_DIR);
-const { html: injectedHtml, injected, unknown } = injectPlugins(rawHtml, neededPlugins, localPlugins);
+const { html: injectedHtml, injected, unknown } = injectPlugins(rawHtml, neededPlugins, localPlugins, EXPERIMENT_DIR);
 if (injected.length) console.log(`Plugins auto-loaded: ${injected.join(", ")}`);
 if (unknown.length)  console.warn(`Unknown plugins (add CDN tag to index.html): ${unknown.join(", ")}`);
 
