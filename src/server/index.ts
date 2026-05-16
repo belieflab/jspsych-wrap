@@ -5,7 +5,7 @@ import portfinder from "portfinder";
 import { dataRouter } from "./routes/data";
 import { redirectRouter } from "./routes/redirect";
 import { gitCommitHash } from "./utils/gitHash";
-import { scanPlugins } from "./utils/pluginScanner";
+import { scanPlugins, scanLocalPlugins } from "./utils/pluginScanner";
 import { injectPlugins } from "./utils/injectPlugins";
 
 const BASE_PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -49,7 +49,8 @@ const indexPath = fs.existsSync(path.join(EXPERIMENT_DIR, "index.html"))
     : TEMPLATE_INDEX;
 const rawHtml = fs.readFileSync(indexPath, "utf8");
 const neededPlugins = scanPlugins(EXPERIMENT_DIR);
-const { html: injectedHtml, injected, unknown } = injectPlugins(rawHtml, neededPlugins);
+const localPlugins  = scanLocalPlugins(EXPERIMENT_DIR);
+const { html: injectedHtml, injected, unknown } = injectPlugins(rawHtml, neededPlugins, localPlugins);
 if (injected.length) console.log(`Plugins auto-loaded: ${injected.join(", ")}`);
 if (unknown.length)  console.warn(`Unknown plugins (add CDN tag to index.html): ${unknown.join(", ")}`);
 

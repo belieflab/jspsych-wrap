@@ -2,14 +2,15 @@ import { PLUGIN_REGISTRY } from "./plugins";
 
 export function injectPlugins(
     html: string,
-    needed: Set<string>
+    needed: Set<string>,
+    localPlugins: Map<string, string> = new Map()
 ): { html: string; injected: string[]; unknown: string[] } {
     const injected: string[] = [];
     const unknown: string[] = [];
     const tags: string[] = [];
 
     for (const name of needed) {
-        const url = PLUGIN_REGISTRY[name];
+        const url = PLUGIN_REGISTRY[name] ?? localPlugins.get(name);
         if (!url) { unknown.push(name); continue; }
         if (html.includes(url)) continue; // already in index.html
         tags.push(`  <script src="${url}"></script>`);
