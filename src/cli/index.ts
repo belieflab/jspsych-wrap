@@ -156,6 +156,32 @@ async function runInit() {
         if (manualFiles.length)     p.log.warn(`Manual jQuery removal needed (chained calls): ${manualFiles.join(", ")}`);
     }
 
+    // CSS consolidation — merge all imported CSS files into exp.css, strip wrap duplicates
+    if (importExisting) {
+        s.start("Consolidating CSS");
+        const { files, pruned } = consolidateCss(path.join(experimentDir, "css"));
+        if (files.length) {
+            const pruneNote = pruned > 0 ? `, ${pruned} wrap duplicate${pruned !== 1 ? "s" : ""} removed` : "";
+            s.stop(`CSS consolidated into exp.css: ${files.join(", ")}${pruneNote}`);
+        } else {
+            s.stop("CSS: nothing to consolidate");
+        }
+    }
+
+    // conf.js — inject missing variables required by the wrap
+    if (importExisting) {
+        const patched = patchConfJs(experimentDir);
+        if (patched.length) p.log.success(`conf.js patched: added ${patched.join(", ")}`);
+    }
+
+    // fn.js — remove functions already provided by the wrap to prevent duplicate declarations
+    if (importExisting) {
+        const dupes = removeDuplicateFunctions(experimentDir);
+        for (const { file, removed } of dupes) {
+            p.log.success(`${file} deduplicated: removed ${removed.join(", ")} (provided by wrap)`);
+        }
+    }
+
     // jsPsych v6 → v7 migration
     if (importExisting && isV6Experiment(experimentDir)) {
         const upgrade = await p.confirm({
@@ -202,6 +228,135 @@ async function runInit() {
     }
 
     p.outro(`Ready! Start your experiment with: npm run dev`);
+}
+
+// Append missing wrap-required variables to exp/conf.js
+function patchConfJs(experimentDir: string): string[] {
+    const confPath = path.join(experimentDir, "exp", "conf.js");
+    if (!fs.existsSync(confPath)) return [];
+    const src = fs.readFileSync(confPath, "utf8");
+    const additions: string[] = [];
+    const patched: string[] = [];
+    if (!/\brepetitions\b/.test(src)) { additions.push("const repetitions = null;"); patched.push("repetitions"); }
+    if (!/\bphase\b/.test(src))       { additions.push("let phase = undefined;");    patched.push("phase"); }
+    if (!/\bplaywright\b/.test(src))  { additions.push("const playwright = false;"); patched.push("playwright"); }
+    if (additions.length) fs.writeFileSync(confPath, src.trimEnd() + "\n\n" + additions.join("\n") + "\n");
+    return patched;
+}
+
+// Remove a single named function/const/let/var declaration using brace-depth tracking
+function removeFunctionDecl(src: string, name: string): { src: string; removed: boolean } {
+    const pattern = new RegExp(
+        `(^|\\n)((?:(?:async\\s+)?function\\s+${name}\\s*\\(|(?:const|let|var)\\s+${name}\\s*=)[\\s\\S]*?)(?=\\n(?:function|const|let|var|async\\s+function|$)|$)`,
+    );
+    // Simpler: find start position, then track braces to find end
+    const re = new RegExp(`(?:^|\\n)(?:(?:async\\s+)?function\\s+${name}\\b|(?:const|let|var)\\s+${name}\\s*=)`, "m");
+    const match = re.exec(src);
+    if (!match) return { src, removed: false };
+
+    const start = match.index === 0 ? 0 : match.index + 1;
+    let depth = 0, i = start, foundOpen = false;
+    while (i < src.length) {
+        if (src[i] === "{") { depth++; foundOpen = true; }
+        else if (src[i] === "}") {
+            depth--;
+            if (foundOpen && depth === 0) {
+                let end = i + 1;
+                // consume optional semicolon
+                if (src[end] === ";") end++;
+                return { src: src.slice(0, start) + src.slice(end), removed: true };
+            }
+        }
+        i++;
+    }
+    return { src, removed: false };
+}
+
+// Functions defined in wrap's fn.js and validate.js — remove from exp/fn.js if duplicated
+const WRAP_FN_NAMES = [
+    "saveData", "saveDataPromise", "testDataSave", "writeCsvRedirect",
+    "areYouSure", "dataSaveAnimation", "loadScript",
+    "openFullscreen", "closeFullscreen", "handleFullscreen",
+    "getRepetitions", "shuffleArray", "translate",
+    "generateTimestamp", "buildBaseFilename",
+];
+
+function removeDuplicateFunctions(experimentDir: string): { file: string; removed: string[] }[] {
+    const results: { file: string; removed: string[] }[] = [];
+    for (const filename of ["fn.js"]) {
+        const filePath = path.join(experimentDir, "exp", filename);
+        if (!fs.existsSync(filePath)) continue;
+        let src = fs.readFileSync(filePath, "utf8");
+        const original = src;
+        const removed: string[] = [];
+        for (const name of WRAP_FN_NAMES) {
+            const result = removeFunctionDecl(src, name);
+            if (result.removed) { src = result.src; removed.push(name); }
+        }
+        if (src !== original) { fs.writeFileSync(filePath, src); results.push({ file: filename, removed }); }
+    }
+    return results;
+}
+
+// Parse CSS into top-level rules using brace-depth tracking.
+// Handles regular rules, @keyframes, @media, etc.
+function parseCssRules(css: string): Array<{ selector: string; raw: string }> {
+    const rules: Array<{ selector: string; raw: string }> = [];
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    let i = 0;
+    while (i < stripped.length) {
+        while (i < stripped.length && /\s/.test(stripped[i])) i++;
+        if (i >= stripped.length) break;
+        let j = i;
+        while (j < stripped.length && stripped[j] !== "{") j++;
+        if (j >= stripped.length) break;
+        const selector = stripped.slice(i, j).trim();
+        let depth = 0, k = j;
+        while (k < stripped.length) {
+            if (stripped[k] === "{") depth++;
+            else if (stripped[k] === "}") { depth--; if (depth === 0) { k++; break; } }
+            k++;
+        }
+        rules.push({ selector, raw: stripped.slice(i, k).trim() });
+        i = k;
+    }
+    return rules;
+}
+
+function normSel(sel: string): string {
+    return sel.split(",").map(s => s.trim().replace(/\s+/g, " ")).sort().join(",");
+}
+
+function consolidateCss(cssDir: string): { files: string[]; pruned: number } {
+    if (!fs.existsSync(cssDir)) return { files: [], pruned: 0 };
+
+    const importFiles = fs.readdirSync(cssDir).filter(f => f.endsWith(".css") && f !== "exp.css");
+    if (!importFiles.length) return { files: [], pruned: 0 };
+
+    // Build wrap-owned selector set from the bundled style.css
+    const wrapStylePath = path.join(__dirname, "../../client/lib/style.css");
+    const wrapCss = fs.existsSync(wrapStylePath) ? fs.readFileSync(wrapStylePath, "utf8") : "";
+    const wrapSelectors = new Set(parseCssRules(wrapCss).map(r => normSel(r.selector)));
+
+    const parts: string[] = [];
+    let totalPruned = 0;
+
+    for (const file of importFiles) {
+        const content = fs.readFileSync(path.join(cssDir, file), "utf8");
+        const rules = parseCssRules(content);
+        const kept = rules.filter(r => !wrapSelectors.has(normSel(r.selector)));
+        totalPruned += rules.length - kept.length;
+        const body = kept.map(r => r.raw).join("\n\n").trim();
+        if (body) parts.push(`/* --- ${file} --- */\n${body}`);
+        fs.unlinkSync(path.join(cssDir, file));
+    }
+
+    const expCssPath = path.join(cssDir, "exp.css");
+    const existing = fs.existsSync(expCssPath) ? fs.readFileSync(expCssPath, "utf8").trim() : "";
+    const combined = [...parts, ...(existing ? [`/* --- exp.css --- */\n${existing}`] : [])].join("\n\n");
+    fs.writeFileSync(expCssPath, combined + "\n");
+
+    return { files: importFiles, pruned: totalPruned };
 }
 
 function copyDir(src: string, dest: string) {

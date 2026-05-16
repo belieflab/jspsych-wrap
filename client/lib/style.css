@@ -1,45 +1,41 @@
+/* === Themes === */
+
 :root.light-theme {
-    --main-color: black; /* Switch main color to white */
-    --background-color: #f5f5f5; /* Assuming you want to invert the background as well */
+    --main-color: black;
+    --background-color: #f5f5f5;
 }
 
 :root.dark-theme {
-    --main-color: #f5f5f5; /* Assuming you want to invert the background as well */
-    --background-color: black; /* Switch main color to white */
+    --main-color: #f5f5f5;
+    --background-color: black;
 }
 
 :root.white-theme {
-    --main-color: black; /* Switch main color to white */
-    --background-color: white; /* Assuming you want to invert the background as well */
+    --main-color: black;
+    --background-color: white;
 }
 
 :root.gray-theme {
-    --main-color: white; /* Switch main color to black */
-    --background-color: gray; /* Assuming you want to invert the background as well */
+    --main-color: white;
+    --background-color: gray;
 }
 
-.stim {
-    padding: 25px 25px 25px 25px;
-    height: 200px;
-    width: 300px;
-}
+/* === Base === */
 
 body {
-    background-color: var(
-        --background-color
-    ); /* Background color, if you've defined it */
+    background-color: var(--background-color);
     font-family: Helvetica, Arial, sans-serif;
 }
 
 p {
-    color: var(--main-color); /* Text color */
+    color: var(--main-color);
 }
 
-.error-page {
-    p {
-        color: red;
-    }
+.error-page p {
+    color: red;
 }
+
+/* === Wrap form visibility === */
 
 .attrition,
 .buttonHolder,
@@ -50,13 +46,6 @@ p {
     display: none;
 }
 
-.likingScale {
-    float: center;
-    padding: 25px 25px 25px 25px;
-    width: 400px;
-    height: 200px;
-}
-
 .buttonHolder,
 .loading {
     margin: 0 auto;
@@ -64,18 +53,156 @@ p {
 }
 
 .centeredDiv {
-    margin: 0 auto;
-    width: 660px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
+
+/* === Intake form buttons === */
+
+#submitButton,
+#consentButton {
+    background-color: #077bff;
+    border: #409eff solid 1px;
+    color: white;
+    font-size: 30px;
+    height: 50px;
+    margin: 30px auto;
+    width: 300px;
+    border-radius: 25px;
+    cursor: pointer;
+    display: block;
+}
+
+#submitButton:hover,
+#consentButton:hover {
+    background-color: #0056b3;
+}
+
+/* === Intake form controls === */
+
+.form-group {
+    position: relative;
+    text-align: center;
+    margin: auto;
+    width: fit-content;
+}
+
+.custom-radio-button {
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    margin-right: 20px;
+    cursor: pointer;
+    font-size: 18px;
+    display: inline-block;
+    line-height: 25px;
+    user-select: none;
+}
+
+.custom-radio-button input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    background-color: #eee;
+    border-radius: 50%;
+}
+
+.custom-radio-button input:checked ~ .checkmark {
+    background-color: #077bff;
+    border: #409eff solid 1px;
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.custom-radio-button input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.custom-radio-button .checkmark:after {
+    top: 9px;
+    left: 9px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+}
+
+.custom-input {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    padding: 10px;
+    width: 200px;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.custom-input:focus {
+    border-color: #077bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(7, 123, 255, 0.5);
+}
+
+.custom-select {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    padding: 10px 30px 10px 10px;
+    width: 200px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.custom-select:focus {
+    border-color: #077bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(7, 123, 255, 0.5);
+}
+
+/* === Consent / screening === */
 
 .consent-box {
     background: #cee8fc;
-    /* #FCF9CE */
     border: solid 0px #98be10;
     color: #222222;
     margin: 35px;
     padding: 20px;
     border-radius: 15px;
+}
+
+.consent-box,
+.consent {
+    color: black;
+    text-align: left;
+    max-width: 90%;
+    margin: auto;
+}
+
+@media (max-width: 768px) {
+    .consent-box,
+    .consent {
+        max-width: 95%;
+    }
 }
 
 #consentHeading,
@@ -92,100 +219,30 @@ p {
     text-align: justify;
 }
 
-.feedback {
-    display: none;
-    font-size: 50px;
-    color: #ff0000;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    position: absolute;
-    text-align: center;
-    vertical-align: middle;
-    line-height: 270px;
-    width: 192px;
-    /* 200 - (border*2) */
-    height: 262px;
-    margin-left: 10px;
-    margin-right: 10px;
-    background-color: rgba(255, 255, 255, 1);
-    border: 4px solid black;
-}
-
-.filler {
-    height: 40px;
-}
-
-.deckContainer {
-    position: relative;
-    margin: auto;
-    max-width: 660px;
-}
-
-.fixation,
-.break {
-    display: none;
-    font-size: 80px;
-    line-height: 270px;
-    margin: auto;
-    max-width: 660px;
-    position: relative;
+.consent-title {
     text-align: center;
 }
 
-.break {
-    font-size: 24px;
-    line-height: normal;
+.screening {
+    background-color: lightgray;
+    text-align: center;
+    margin: 35px;
+    padding: 20px;
+    border-radius: 15px;
 }
 
-.imgContainer {
-    position: relative;
-    margin: 0 auto;
-    float: left;
-    padding-left: 10px;
-    padding-right: 10px;
+.screening h1 {
+    color: black;
 }
 
-#nextButton {
-    background-color: #21822d;
-    /* green */
-    border: black solid 3px;
-    color: white;
-    font-size: 30px;
-    height: 50px;
-    margin: 30px auto;
-    width: 300px;
+/* === Loading / data-save animations === */
+
+.data-save-animation {
+    color: var(--main-color);
 }
 
-p.bold {
-    font-weight: bold;
-}
-
-.center {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    width: 50%;
-}
-
-#submitButton,
-#consentButton {
-    background-color: #077bff; /* Omnibus blue */
-    border: #409eff solid 1px; /* Lighter blue border for a softer look */
-    color: white;
-    font-size: 30px;
-    height: 50px;
-    margin: 30px auto;
-    width: 300px;
-    border-radius: 25px; /* Keeps the pill-like shape */
-    cursor: pointer; /* Changes the cursor to a pointer when hovering over the buttons */
-    display: block; /* Ensures the margin auto works for center alignment */
-}
-
-#submitButton:hover,
-#consentButton:hover {
-    background-color: #0056b3; /* Darker blue for hover effect */
+.data-save-animation .end {
+    color: var(--main-color);
 }
 
 .spinner {
@@ -194,7 +251,6 @@ p.bold {
     height: 40px;
     position: relative;
     text-align: center;
-
     -webkit-animation: sk-rotate 2s infinite linear;
     animation: sk-rotate 2s infinite linear;
 }
@@ -208,7 +264,6 @@ p.bold {
     top: 0;
     background-color: #333;
     border-radius: 100%;
-
     -webkit-animation: sk-bounce 2s infinite ease-in-out;
     animation: sk-bounce 2s infinite ease-in-out;
 }
@@ -220,45 +275,17 @@ p.bold {
     animation-delay: -1s;
 }
 
-@-webkit-keyframes sk-rotate {
-    100% {
-        -webkit-transform: rotate(360deg);
-    }
-}
-
-@keyframes sk-rotate {
-    100% {
-        transform: rotate(360deg);
-        -webkit-transform: rotate(360deg);
-    }
-}
+@-webkit-keyframes sk-rotate { 100% { -webkit-transform: rotate(360deg); } }
+@keyframes sk-rotate { 100% { transform: rotate(360deg); } }
 
 @-webkit-keyframes sk-bounce {
-    0%,
-    100% {
-        -webkit-transform: scale(0);
-    }
-
-    50% {
-        -webkit-transform: scale(1);
-    }
+    0%, 100% { -webkit-transform: scale(0); }
+    50%       { -webkit-transform: scale(1); }
 }
 
 @keyframes sk-bounce {
-    0%,
-    100% {
-        transform: scale(0);
-        -webkit-transform: scale(0);
-    }
-
-    50% {
-        transform: scale(1);
-        -webkit-transform: scale(1);
-    }
-}
-
-.data-save-animation .end {
-    color: var(--main-color); /* Text color */
+    0%, 100% { transform: scale(0); }
+    50%       { transform: scale(1); }
 }
 
 .sk-cube-grid {
@@ -270,260 +297,34 @@ p.bold {
 .sk-cube-grid .sk-cube {
     width: 33%;
     height: 33%;
-    background-color: var(
-        --main-color
-    ); /* Background color, if you've defined it */
+    background-color: var(--main-color);
     float: left;
     -webkit-animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out;
     animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out;
 }
 
-.sk-cube-grid .sk-cube1 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
-
-.sk-cube-grid .sk-cube2 {
-    -webkit-animation-delay: 0.3s;
-    animation-delay: 0.3s;
-}
-
-.sk-cube-grid .sk-cube3 {
-    -webkit-animation-delay: 0.4s;
-    animation-delay: 0.4s;
-}
-
-.sk-cube-grid .sk-cube4 {
-    -webkit-animation-delay: 0.1s;
-    animation-delay: 0.1s;
-}
-
-.sk-cube-grid .sk-cube5 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
-
-.sk-cube-grid .sk-cube6 {
-    -webkit-animation-delay: 0.3s;
-    animation-delay: 0.3s;
-}
-
-.sk-cube-grid .sk-cube7 {
-    -webkit-animation-delay: 0s;
-    animation-delay: 0s;
-}
-
-.sk-cube-grid .sk-cube8 {
-    -webkit-animation-delay: 0.1s;
-    animation-delay: 0.1s;
-}
-
-.sk-cube-grid .sk-cube9 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
+.sk-cube-grid .sk-cube1  { -webkit-animation-delay: 0.2s; animation-delay: 0.2s; }
+.sk-cube-grid .sk-cube2  { -webkit-animation-delay: 0.3s; animation-delay: 0.3s; }
+.sk-cube-grid .sk-cube3  { -webkit-animation-delay: 0.4s; animation-delay: 0.4s; }
+.sk-cube-grid .sk-cube4  { -webkit-animation-delay: 0.1s; animation-delay: 0.1s; }
+.sk-cube-grid .sk-cube5  { -webkit-animation-delay: 0.2s; animation-delay: 0.2s; }
+.sk-cube-grid .sk-cube6  { -webkit-animation-delay: 0.3s; animation-delay: 0.3s; }
+.sk-cube-grid .sk-cube7  { -webkit-animation-delay: 0s;   animation-delay: 0s;   }
+.sk-cube-grid .sk-cube8  { -webkit-animation-delay: 0.1s; animation-delay: 0.1s; }
+.sk-cube-grid .sk-cube9  { -webkit-animation-delay: 0.2s; animation-delay: 0.2s; }
 
 @-webkit-keyframes sk-cubeGridScaleDelay {
-    0%,
-    70%,
-    100% {
-        -webkit-transform: scale3D(1, 1, 1);
-        transform: scale3D(1, 1, 1);
-    }
-
-    35% {
-        -webkit-transform: scale3D(0, 0, 1);
-        transform: scale3D(0, 0, 1);
-    }
+    0%, 70%, 100% { -webkit-transform: scale3D(1,1,1); transform: scale3D(1,1,1); }
+    35%           { -webkit-transform: scale3D(0,0,1); transform: scale3D(0,0,1); }
 }
 
 @keyframes sk-cubeGridScaleDelay {
-    0%,
-    70%,
-    100% {
-        -webkit-transform: scale3D(1, 1, 1);
-        transform: scale3D(1, 1, 1);
-    }
-
-    35% {
-        -webkit-transform: scale3D(0, 0, 1);
-        transform: scale3D(0, 0, 1);
-    }
+    0%, 70%, 100% { transform: scale3D(1,1,1); }
+    35%           { transform: scale3D(0,0,1); }
 }
 
-/* hide cursor */
-.hideCursor {
-    cursor: none;
-}
+/* === Cursor / click utilities === */
 
-/* disable clicks */
-.noClick {
-    pointer-events: none;
-}
-
-/* show cursor */
-.showCursor {
-    cursor: default;
-}
-
-/* new consent */
-.screening {
-    background-color: lightgray;
-    text-align: center;
-    margin: 35px;
-    padding: 20px;
-    border-radius: 15px; /* Adds rounded corners */
-}
-
-.screening h1 {
-    color: black; /* Adjusts title color */
-}
-
-.consent-title {
-    text-align: center;
-}
-
-.centeredDiv {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.consent-box,
-.consent {
-    color: black;
-    text-align: left;
-    max-width: 90%; /* Prevents the box from being too wide on larger screens */
-    margin: auto; /* Centers the box */
-}
-
-@media (max-width: 768px) {
-    .consent-box,
-    .consent {
-        max-width: 95%; /* Allows more width on smaller screens for better readability */
-    }
-}
-
-.data-save-animation {
-    color: var(--main-color); /* Text color */
-}
-
-/*  */
-
-.custom-radio-button {
-    position: relative;
-    padding-left: 35px; /* Space for the custom radio button */
-    margin-bottom: 12px;
-    margin-right: 20px; /* Increase spacing between buttons */
-    cursor: pointer;
-    font-size: 18px; /* Adjust font size here */
-    display: inline-block; /* Align buttons horizontally */
-    line-height: 25px; /* Adjust line height to center text with the button */
-    user-select: none;
-}
-
-/* Hide the browser's default radio button */
-.custom-radio-button input {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-}
-
-/* Create a custom radio button */
-.checkmark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 25px; /* Adjust for size */
-    width: 25px; /* Adjust for size */
-    background-color: #eee;
-    border-radius: 50%;
-}
-
-/* When the radio button is checked, add a blue background */
-.custom-radio-button input:checked ~ .checkmark {
-    background-color: #077bff;
-    border: #409eff solid 1px; /* Lighter blue border for a softer look */
-}
-
-/* Create the indicator (the dot) inside the custom radio button */
-.checkmark:after {
-    content: "";
-    position: absolute;
-    display: none;
-}
-
-/* Show the indicator (dot) when checked */
-.custom-radio-button input:checked ~ .checkmark:after {
-    display: block;
-}
-
-/* Style the indicator (dot) */
-.custom-radio-button .checkmark:after {
-    top: 9px;
-    left: 9px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: white;
-}
-
-.form-group {
-    text-align: center; /* Center align the text and any child elements */
-    margin: auto; /* Center the div itself if within another container */
-    width: fit-content; /* Make the width of the div fit its contents */
-}
-
-.custom-input {
-    background-color: #fff; /* White background */
-    border: 1px solid #ccc; /* Light grey border */
-    border-radius: 4px; /* Rounded borders */
-    font-size: 16px; /* Adjust font size here */
-    padding: 10px; /* Add some padding inside the input field */
-    width: 200px; /* Set a default width for the input field */
-    display: inline-block; /* Necessary for centering if the parent has text-align: center */
-    margin-top: 8px; /* Optional: Add some space above the field */
-}
-
-.custom-input:focus {
-    border-color: #077bff; /* Change border color when focused for better visibility */
-    outline: none; /* Remove the default focus outline */
-    box-shadow: 0 0 5px rgba(7, 123, 255, 0.5); /* Add a subtle shadow to indicate focus */
-}
-
-.form-group {
-    text-align: center;
-    margin: auto;
-    width: fit-content;
-}
-
-.custom-select {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-    padding: 10px 30px 10px 10px; /* Adjusted for arrow spacing */
-    width: 200px; /* Adjust as necessary */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    cursor: pointer;
-    position: relative; /* Ensure relative positioning for positioning pseudo-elements */
-}
-
-.custom-select:focus {
-    border-color: #077bff; /* Change border color when focused */
-    outline: none;
-    box-shadow: 0 0 5px rgba(7, 123, 255, 0.5);
-}
-
-/* Ensures the container is positioned relative to place pseudo-elements correctly */
-.form-group {
-    position: relative;
-    text-align: center;
-    margin: auto;
-    width: fit-content;
-}
+.hideCursor  { cursor: none; }
+.noClick     { pointer-events: none; }
+.showCursor  { cursor: default; }
