@@ -1,9 +1,12 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import portfinder from "portfinder";
 import { dataRouter } from "./routes/data";
 import { redirectRouter } from "./routes/redirect";
 import { gitCommitHash } from "./utils/gitHash";
+import { scanPlugins } from "./utils/pluginScanner";
+import { injectPlugins } from "./utils/injectPlugins";
 
 const BASE_PORT = parseInt(process.env.PORT ?? "3000", 10);
 const EXPERIMENT_DIR = process.env.EXPERIMENT_DIR ?? process.cwd();
@@ -39,19 +42,25 @@ app.use("/wrap", express.static(path.join(__dirname, "../client")));
 // Serve experiment static files (index.html, exp/, css/, etc.)
 app.use(express.static(EXPERIMENT_DIR));
 
-// SPA fallback — serve experiment's index.html, or the package template if none exists.
-// Return 404 for asset requests (JS, CSS, etc.) so missing files don't silently return HTML.
+// Scan exp/ for jsPsych* plugin references and inject missing CDN tags into HTML.
 const TEMPLATE_INDEX = path.join(__dirname, "../templates/index.html");
+const indexPath = fs.existsSync(path.join(EXPERIMENT_DIR, "index.html"))
+    ? path.join(EXPERIMENT_DIR, "index.html")
+    : TEMPLATE_INDEX;
+const rawHtml = fs.readFileSync(indexPath, "utf8");
+const neededPlugins = scanPlugins(EXPERIMENT_DIR);
+const { html: injectedHtml, injected, unknown } = injectPlugins(rawHtml, neededPlugins);
+if (injected.length) console.log(`Plugins auto-loaded: ${injected.join(", ")}`);
+if (unknown.length)  console.warn(`Unknown plugins (add CDN tag to index.html): ${unknown.join(", ")}`);
+
+// SPA fallback — serve injected HTML. Return 404 for asset requests so missing files don't silently return HTML.
 const ASSET_RE = /\.(js|css|map|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|json|csv)$/i;
 app.get("*", (req, res) => {
     if (ASSET_RE.test(req.path)) {
         res.status(404).send(`Not found: ${req.path}`);
         return;
     }
-    const experimentIndex = path.join(EXPERIMENT_DIR, "index.html");
-    res.sendFile(experimentIndex, (err) => {
-        if (err) res.sendFile(TEMPLATE_INDEX);
-    });
+    res.type("html").send(injectedHtml);
 });
 
 portfinder.basePort = BASE_PORT;

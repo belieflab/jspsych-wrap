@@ -37,6 +37,8 @@ function runInit() {
     const templatesDir = path.join(__dirname, "../../templates/exp");
     const cssDir = path.join(experimentDir, "css");
     const cssTemplatesDir = path.join(__dirname, "../../templates/css");
+    const stimDir = path.join(experimentDir, "stim");
+    const pluginsDir = path.join(experimentDir, "plugins");
     const templateIndex = path.join(__dirname, "../../templates/index.html");
     const experimentIndex = path.join(experimentDir, "index.html");
 
@@ -88,6 +90,24 @@ function runInit() {
     if (!fs.existsSync(experimentIndex)) {
         fs.copyFileSync(templateIndex, experimentIndex);
         console.log("Created index.html");
+    }
+
+    // Create stim/
+    if (!fs.existsSync(stimDir)) {
+        fs.mkdirSync(stimDir);
+        fs.writeFileSync(path.join(stimDir, ".gitkeep"), "");
+        console.log("Created stim/");
+    }
+
+    // Create plugins/ and copy default plugin files
+    if (!fs.existsSync(pluginsDir)) {
+        fs.mkdirSync(pluginsDir);
+        const pluginSrcDir = path.join(__dirname, "../../client/plugins");
+        const pluginFiles = fs.readdirSync(pluginSrcDir);
+        for (const file of pluginFiles) {
+            fs.copyFileSync(path.join(pluginSrcDir, file), path.join(pluginsDir, file));
+        }
+        console.log(`Created plugins/ with ${pluginFiles.join(", ")}`);
     }
 
     // Create data/

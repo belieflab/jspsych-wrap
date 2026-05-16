@@ -1,0 +1,32 @@
+export const PLUGIN_REGISTRY: Record<string, string> = {
+    // Local patched/custom plugins (served from experiment's /plugins/)
+    jsPsychHtmlKeyboardResponse:      "/plugins/plugin-html-keyboard-response.js",
+    jsPsychTouchResponse:             "/plugins/plugin-html-touch-response.js",
+    jsPsychSurveyMultiChoiceTouch:    "/plugins/plugin-survey-multi-choice-touch.js",
+    jsPsychColorWheel:                "/plugins/plugin-color-wheel.js",
+
+    // CDN plugins
+    jsPsychPreload:                "https://unpkg.com/@jspsych/plugin-preload@1.1.3",
+    jsPsychHtmlButtonResponse:     "https://unpkg.com/@jspsych/plugin-html-button-response@1.1.3",
+    jsPsychImageKeyboardResponse:  "https://unpkg.com/@jspsych/plugin-image-keyboard-response@1.1.2",
+    jsPsychAudioKeyboardResponse:  "https://unpkg.com/@jspsych/plugin-audio-keyboard-response@1.1.2",
+    jsPsychInstructions:           "https://unpkg.com/@jspsych/plugin-instructions@1.1.4",
+    jsPsychSurveyMultiChoice:      "https://unpkg.com/@jspsych/plugin-survey-multi-choice@1.1.3",
+    jsPsychSurveyText:             "https://unpkg.com/@jspsych/plugin-survey-text@1.1.3",
+    jsPsychSurveyLikert:           "https://unpkg.com/@jspsych/plugin-survey-likert@1.1.3",
+    jsPsychCanvasKeyboardResponse: "https://unpkg.com/@jspsych/plugin-canvas-keyboard-response@1.1.2",
+    jsPsychCanvasButtonResponse:   "https://unpkg.com/@jspsych/plugin-canvas-button-response@1.1.2",
+    jsPsychCategorizeHtml:         "https://unpkg.com/@jspsych/plugin-categorize-html@1.1.2",
+    jsPsychCategorizeImage:        "https://unpkg.com/@jspsych/plugin-categorize-image@1.1.2",
+    jsPsychFreeSort:               "https://unpkg.com/@jspsych/plugin-free-sort@1.0.2",
+    jsPsychMaximallyEntropicSampling: "https://unpkg.com/@jspsych/plugin-maximal-entropy-sampling@1.0.0",
+    jsPsychReconstructionSlider:   "https://unpkg.com/@jspsych/plugin-reconstruction@1.0.1",
+    jsPsychSameDifferentHtml:      "https://unpkg.com/@jspsych/plugin-same-different-html@1.1.2",
+    jsPsychSerialReactionTime:     "https://unpkg.com/@jspsych/plugin-serial-reaction-time@1.1.2",
+    jsPsychSketchpad:              "https://unpkg.com/@jspsych/plugin-sketchpad@1.0.2",
+    jsPsychVideoKeyboardResponse:  "https://unpkg.com/@jspsych/plugin-video-keyboard-response@1.1.2",
+    jsPsychVirtualChinrest:        "https://unpkg.com/@jspsych/plugin-virtual-chinrest@2.0.0",
+    jsPsychWebgazerCalibrate:      "https://unpkg.com/@jspsych/plugin-webgazer-calibrate@1.0.2",
+    jsPsychWebgazerInitCamera:     "https://unpkg.com/@jspsych/plugin-webgazer-init-camera@1.0.2",
+    jsPsychWebgazerValidate:       "https://unpkg.com/@jspsych/plugin-webgazer-validate@1.0.2",
+};
