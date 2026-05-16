@@ -174,12 +174,22 @@ export function migrateV6ToV7(expDir: string): MigrationResult {
             }
         }
 
-        // 4. Flag button_html — removed in v7
+        // 4. jsPsych.NO_KEYS / jsPsych.ALL_KEYS → string literals
+        if (/jsPsych\.NO_KEYS\b/.test(src)) {
+            src = src.replace(/\bjsPsych\.NO_KEYS\b/g, '"NO_KEYS"');
+            keycodesFixed.add(file);
+        }
+        if (/jsPsych\.ALL_KEYS\b/.test(src)) {
+            src = src.replace(/\bjsPsych\.ALL_KEYS\b/g, '"ALL_KEYS"');
+            keycodesFixed.add(file);
+        }
+
+        // 5. Flag button_html — removed in v7
         if (/\bbutton_html\b/.test(src)) {
             manualFlags.push(`${file}: button_html removed in jsPsych 7 — use choices: [] for button labels`);
         }
 
-        // 5. Flag jQuery keyCode / .which — switch to KeyboardEvent.key
+        // 6. Flag jQuery keyCode / .which — switch to KeyboardEvent.key
         if (/\.keyCode\b|\.which\b/.test(src)) {
             manualFlags.push(`${file}: .keyCode/.which → update to KeyboardEvent.key string comparisons`);
         }
@@ -187,10 +197,67 @@ export function migrateV6ToV7(expDir: string): MigrationResult {
         if (src !== original) fs.writeFileSync(filePath, src);
     }
 
+    // Detect setup functions in fn.js that must run before var.js
+    // Pattern: fn.js defines a function that sets globals used at the top level of var.js
+    injectVarJsSetupCalls(dir, manualFlags);
+
     return {
         typesMigrated: [...typesMigrated],
         keycodesFixed: [...keycodesFixed],
         initTransformed,
         manualFlags,
     };
+}
+
+// Scan fn.js for functions that set globals (via assignment at top scope),
+// then check if var.js uses those globals without first calling the function.
+// If so, prepend the call to var.js.
+function injectVarJsSetupCalls(dir: string, manualFlags: string[]): void {
+    const fnPath  = path.join(dir, "fn.js");
+    const varPath = path.join(dir, "var.js");
+    if (!fs.existsSync(fnPath) || !fs.existsSync(varPath)) return;
+
+    const fnSrc  = fs.readFileSync(fnPath,  "utf8");
+    const varSrc = fs.readFileSync(varPath, "utf8");
+
+    // Find function names in fn.js that assign to bare globals (e.g. EasyKey_uCase = ...)
+    const globalSetters = new Map<string, string[]>(); // fnName → [globals it sets]
+    const fnDeclRe = /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:function|\())/g;
+    let fnMatch: RegExpExecArray | null;
+    while ((fnMatch = fnDeclRe.exec(fnSrc)) !== null) {
+        const fnName = fnMatch[1] ?? fnMatch[2];
+        if (!fnName) continue;
+        // Find the function body using brace depth
+        let i = fnMatch.index, depth = 0, started = false;
+        let body = "";
+        while (i < fnSrc.length) {
+            if (fnSrc[i] === "{") { depth++; started = true; }
+            else if (fnSrc[i] === "}") { depth--; if (started && depth === 0) { body = fnSrc.slice(fnMatch.index, i + 1); break; } }
+            i++;
+        }
+        // Collect bare assignments (not object keys, not var/let/const declarations)
+        const assignRe = /^[ \t]*([A-Z][a-zA-Z_]+)\s*=/mg;
+        const globals: string[] = [];
+        let aMatch: RegExpExecArray | null;
+        while ((aMatch = assignRe.exec(body)) !== null) {
+            globals.push(aMatch[1]);
+        }
+        if (globals.length) globalSetters.set(fnName, globals);
+    }
+
+    const injected: string[] = [];
+    for (const [fnName, globals] of globalSetters) {
+        // Check if var.js uses any of these globals at top level (not inside a function)
+        const usedInVar = globals.some(g => new RegExp(`\\b${g}\\b`).test(varSrc));
+        const alreadyCalled = new RegExp(`\\b${fnName}\\s*\\(`).test(varSrc);
+        if (usedInVar && !alreadyCalled) {
+            injected.push(fnName);
+        }
+    }
+
+    if (injected.length) {
+        const calls = injected.map(fn => `${fn}();`).join("\n");
+        fs.writeFileSync(varPath, `// Setup calls injected by jspsych-wrap migration\n${calls}\n\n${varSrc}`);
+        manualFlags.push(`var.js: prepended setup calls — verify these run correctly: ${injected.join(", ")}`);
+    }
 }

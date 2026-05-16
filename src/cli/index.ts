@@ -39,6 +39,16 @@ function runServer() {
     });
 }
 
+function detectHtdocsBase(): string {
+    const candidates =
+        process.platform === "win32"
+            ? ["C:\\xampp\\htdocs", "C:\\wamp64\\www", "C:\\wamp\\www"]
+            : ["/Applications/MAMP/htdocs", "/Applications/XAMPP/htdocs"];
+    const found = candidates.find(p => fs.existsSync(p));
+    const base = found ?? (process.platform === "win32" ? "C:\\xampp\\htdocs" : "/Applications/MAMP/htdocs");
+    return process.platform === "win32" ? `${base}\\` : `${base}/`;
+}
+
 async function runInit() {
     const experimentDir = process.cwd();
     const pkgPath = path.join(experimentDir, "package.json");
@@ -62,7 +72,7 @@ async function runInit() {
     if (importExisting) {
         const input = await p.text({
             message: "Path to existing experiment:",
-            placeholder: "/Applications/MAMP/htdocs/myExperiment",
+            initialValue: detectHtdocsBase(),
             validate(value) {
                 const resolved = path.resolve(experimentDir, value);
                 if (!fs.existsSync(resolved)) return `Directory not found: ${resolved}`;
@@ -174,6 +184,12 @@ async function runInit() {
         if (patched.length) p.log.success(`conf.js patched: added ${patched.join(", ")}`);
     }
 
+    // Stub missing optional exp/ files so the server never returns 404 for them
+    if (importExisting) {
+        const stubbed = stubMissingExpFiles(experimentDir);
+        if (stubbed.length) p.log.success(`exp/ stubs created: ${stubbed.join(", ")}`);
+    }
+
     // fn.js — remove functions already provided by the wrap to prevent duplicate declarations
     if (importExisting) {
         const dupes = removeDuplicateFunctions(experimentDir);
@@ -230,18 +246,57 @@ async function runInit() {
     p.outro(`Ready! Start your experiment with: npm run dev`);
 }
 
-// Append missing wrap-required variables to exp/conf.js
+// All variables the wrap's fn.js / redirect.js / validate.js read from conf.js
+const CONF_DEFAULTS: Array<{ name: string; code: string }> = [
+    { name: "debug",           code: "let debug = false;" },
+    { name: "version",         code: 'const version = "standard";' },
+    { name: "experimentName",  code: 'const experimentName = "Experiment";' },
+    { name: "experimentAlias", code: 'const experimentAlias = "experiment";' },
+    { name: "language",        code: 'const language = "english";' },
+    { name: "theme",           code: 'const theme = "light";' },
+    { name: "repetitions",     code: "const repetitions = { production: null, debug: null };" },
+    { name: "playwright",      code: "const playwright = false;" },
+    { name: "phase",           code: "let phase = undefined;" },
+    { name: "counterbalance",  code: "const counterbalance = false;" },
+    { name: "urlConfig",       code: 'const urlConfig = { [version]: "", default: "" };' },
+    { name: "adminEmail",      code: "const adminEmail = undefined;" },
+    { name: "intake",          code: "const intake = { subject: {}, sites: {}, phenotypes: [] };" },
+];
+
 function patchConfJs(experimentDir: string): string[] {
     const confPath = path.join(experimentDir, "exp", "conf.js");
     if (!fs.existsSync(confPath)) return [];
     const src = fs.readFileSync(confPath, "utf8");
     const additions: string[] = [];
     const patched: string[] = [];
-    if (!/\brepetitions\b/.test(src)) { additions.push("const repetitions = null;"); patched.push("repetitions"); }
-    if (!/\bphase\b/.test(src))       { additions.push("let phase = undefined;");    patched.push("phase"); }
-    if (!/\bplaywright\b/.test(src))  { additions.push("const playwright = false;"); patched.push("playwright"); }
-    if (additions.length) fs.writeFileSync(confPath, src.trimEnd() + "\n\n" + additions.join("\n") + "\n");
+    for (const { name, code } of CONF_DEFAULTS) {
+        if (!new RegExp(`\\b${name}\\b`).test(src)) {
+            additions.push(code);
+            patched.push(name);
+        }
+    }
+    if (additions.length) {
+        fs.writeFileSync(confPath,
+            src.trimEnd() + "\n\n// Added by jspsych-wrap import\n" + additions.join("\n") + "\n"
+        );
+    }
     return patched;
+}
+
+// Create empty stubs for optional exp/ files that validate.js expects to exist
+function stubMissingExpFiles(experimentDir: string): string[] {
+    const expDir = path.join(experimentDir, "exp");
+    if (!fs.existsSync(expDir)) return [];
+    const optional = ["var.js", "lang.js", "fn.js"];
+    const created: string[] = [];
+    for (const file of optional) {
+        const filePath = path.join(expDir, file);
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, '"use strict";\n');
+            created.push(file);
+        }
+    }
+    return created;
 }
 
 // Remove a single named function/const/let/var declaration using brace-depth tracking
@@ -333,10 +388,18 @@ function consolidateCss(cssDir: string): { files: string[]; pruned: number } {
     const importFiles = fs.readdirSync(cssDir).filter(f => f.endsWith(".css") && f !== "exp.css");
     if (!importFiles.length) return { files: [], pruned: 0 };
 
-    // Build wrap-owned selector set from the bundled style.css
+    // Build wrap-owned selector set from the bundled style.css.
+    // Index both the full multi-selector and each individual part so that
+    // e.g. "#submitButton" matches the wrap rule "#submitButton, #consentButton".
     const wrapStylePath = path.join(__dirname, "../../client/lib/style.css");
     const wrapCss = fs.existsSync(wrapStylePath) ? fs.readFileSync(wrapStylePath, "utf8") : "";
-    const wrapSelectors = new Set(parseCssRules(wrapCss).map(r => normSel(r.selector)));
+    const wrapSelectors = new Set<string>();
+    for (const rule of parseCssRules(wrapCss)) {
+        wrapSelectors.add(normSel(rule.selector));
+        for (const part of rule.selector.split(",")) {
+            wrapSelectors.add(part.trim().replace(/\s+/g, " "));
+        }
+    }
 
     const parts: string[] = [];
     let totalPruned = 0;

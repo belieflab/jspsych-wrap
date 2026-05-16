@@ -282,7 +282,7 @@ async function loadExperimentScripts(onFailure) {
     try {
         const check = await fetch("exp/var.js", { method: "HEAD" });
         if (check.ok) await loadScript("exp/var.js");
-    } catch (_) { /* var.js is optional — 404 or network error is fine */ }
+    } catch (_) { /* var.js is optional */ }
 
     try {
         await loadScript("exp/lang.js");
