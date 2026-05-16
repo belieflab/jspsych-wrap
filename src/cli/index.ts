@@ -5,6 +5,7 @@ import { spawnSync } from "child_process";
 import * as p from "@clack/prompts";
 import { scanPlugins, scanLocalPlugins } from "../server/utils/pluginScanner";
 import { PLUGIN_REGISTRY } from "../server/utils/plugins";
+import { isV6Experiment, migrateV6ToV7 } from "./migrateV6";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -153,6 +154,21 @@ async function runInit() {
 
         if (remediatedFiles.length) p.log.success(`jQuery remediated: ${remediatedFiles.join(", ")}`);
         if (manualFiles.length)     p.log.warn(`Manual jQuery removal needed (chained calls): ${manualFiles.join(", ")}`);
+    }
+
+    // jsPsych v6 → v7 migration
+    if (importExisting && isV6Experiment(experimentDir)) {
+        const upgrade = await p.confirm({
+            message: "jsPsych 6 detected — upgrade to jsPsych 7?",
+            initialValue: true,
+        });
+        if (!p.isCancel(upgrade) && upgrade) {
+            const { typesMigrated, keycodesFixed, initTransformed, manualFlags } = migrateV6ToV7(experimentDir);
+            if (typesMigrated.length)   p.log.success(`Plugin types upgraded: ${typesMigrated.join(", ")}`);
+            if (keycodesFixed.length)   p.log.success(`Keycode choices updated: ${keycodesFixed.join(", ")}`);
+            if (initTransformed.length) p.log.success(`jsPsych.init() migrated: ${initTransformed.join(", ")}`);
+            for (const flag of manualFlags) p.log.warn(flag);
+        }
     }
 
     // Install dependencies

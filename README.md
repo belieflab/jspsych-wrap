@@ -10,6 +10,7 @@ Node.js CLI and Express server for [jsPsych](https://www.jspsych.org/) experimen
 - Saves CSV data to `data/` (replaces `data.php`)
 - Handles participant routing and counterbalancing (replaces `redirect.php`)
 - Scaffolds new experiments with an interactive `init` wizard
+- Migrates jsPsych 6 experiments to jsPsych 7 during import
 
 ## Requirements
 
@@ -67,6 +68,33 @@ Resolution order for each plugin:
 
 Unknown plugins (not in the registry and not found locally) are printed as a warning — add the `<script>` tag to `index.html` manually.
 
+## jsPsych 6 → 7 migration
+
+When importing an experiment, the wizard detects jsPsych 6 and offers to upgrade automatically.
+
+**What gets migrated automatically:**
+
+| Before (v6) | After (v7) |
+|---|---|
+| `type: "html-keyboard-response"` | `type: jsPsychHtmlKeyboardResponse` |
+| `choices: [32]` | `choices: [" "]` |
+| `choices: [9, 13]` | `choices: ["Tab", "Enter"]` |
+| `jsPsych.init({ timeline: tl, ...opts })` | `window.jsPsych = initJsPsych({...opts}); jsPsych.run(tl);` |
+
+**What gets flagged for manual review:**
+
+- `button_html` — removed in v7; use `choices: []` for button labels
+- `.keyCode` / `.which` in jQuery event handlers — switch to `KeyboardEvent.key` string comparisons
+- Any `jsPsych.init()` call where the timeline variable couldn't be extracted
+
+**Monolithic experiments** (all logic inline in a PHP file, no `exp/` structure) cannot be auto-migrated. The wizard will detect this and print a restructuring checklist:
+
+1. Extract trial definitions into `exp/timeline.js`
+2. Extract config into `exp/conf.js`
+3. Extract helper functions into `exp/fn.js`
+4. Replace custom `saveData()` with jspsych-wrap's built-in version
+5. Re-run `jspsych-wrap init` — the v6→v7 upgrade will run on the second pass
+
 ## Configuration (`exp/conf.js`)
 
 ```js
@@ -103,6 +131,12 @@ jspsych-wrap init         # interactive setup wizard
 npm run build      # compile TypeScript
 npm run dev        # watch mode
 npm test           # Jest test suite
+```
+
+To test the CLI locally without publishing:
+
+```bash
+node /path/to/jspsych-wrap/dist/cli/index.js init
 ```
 
 ## License
